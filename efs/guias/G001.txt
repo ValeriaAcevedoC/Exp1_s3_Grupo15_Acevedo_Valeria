@@ -1,6 +1,0 @@
-GUIA DE DESPACHO
-Numero: G001
-Transportista: Transportes Duoc
-Cliente: Juan Pérez
-Direccion destino: Santiago
-Fecha: 2026-06-08

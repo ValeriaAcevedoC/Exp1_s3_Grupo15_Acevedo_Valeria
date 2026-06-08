@@ -21,17 +21,8 @@ public class GuiaController {
     }
 
     @PostMapping
-    public GuiaDespacho crearGuia() {
-
-        GuiaDespacho guia = GuiaDespacho.builder()
-                .numeroGuia("G001")
-                .transportista("Transportes Duoc")
-                .cliente("Juan Pérez")
-                .direccionDestino("Santiago")
-                .fecha(LocalDate.now())
-                .build();
-
-        return service.guardar(guia);
+    public GuiaDespacho crearGuia(@RequestBody GuiaDespacho guiaData) {
+        return service.guardar(guiaData);
     }
 
     @GetMapping
