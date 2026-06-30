@@ -15,6 +15,7 @@ public class AzureRoleConverter implements Converter<Jwt, AbstractAuthentication
     public AbstractAuthenticationToken convert(Jwt jwt) {
 
         List<SimpleGrantedAuthority> authorities = new ArrayList<>();
+        // System.out.println(jwt.getClaims());
 
         String rol = jwt.getClaimAsString("extension_consultaRole");
 
