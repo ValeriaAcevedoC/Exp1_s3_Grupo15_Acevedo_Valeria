@@ -41,9 +41,9 @@ public class GuiaController {
         byte[] archivo = service.descargarArchivo(id);
 
         return ResponseEntity.ok()
-            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=guia-" + id + ".txt")
-            .contentType(MediaType.TEXT_PLAIN)
-            .body(archivo);
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=guia-" + id + ".pdf")
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(archivo);
     }
 
     @PutMapping("/{id}")

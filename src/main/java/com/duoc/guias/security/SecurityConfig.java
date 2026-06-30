@@ -22,7 +22,7 @@ public class SecurityConfig {
                 .requestMatchers("/h2-console/**").permitAll()
 
                 // Rol DESCARGA: solo puede descargar guías
-                .requestMatchers(HttpMethod.GET, "/api/guias/*/descargar")
+                .requestMatchers(HttpMethod.GET, "/api/guias/*/archivo")
                     .hasAnyRole("DESCARGA", "ADMIN")
 
                 // Rol ADMIN: puede consultar guías
