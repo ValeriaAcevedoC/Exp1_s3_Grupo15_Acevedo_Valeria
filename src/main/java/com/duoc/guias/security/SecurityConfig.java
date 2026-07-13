@@ -40,6 +40,12 @@ public class SecurityConfig {
                 // Rol ADMIN: puede eliminar guías
                 .requestMatchers(HttpMethod.DELETE, "/api/guias/**")
                     .hasRole("ADMIN")
+                
+                // Deniega el acceso a rabbit para producir mensajes, este era un endpoint de prueba.
+                .requestMatchers("/api/rabbit/enviar").denyAll()
+                
+                // Rol ADMIN: puede consumir guías a través de RabbitMQ
+                .requestMatchers("/api/rabbit/consumir").hasRole("ADMIN")
 
                 .anyRequest().authenticated()
             )
