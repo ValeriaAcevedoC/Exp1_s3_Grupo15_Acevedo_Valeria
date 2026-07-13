@@ -18,6 +18,7 @@ public class GuiaService {
 
     private final GuiaRepository repository;
     private final AwsS3Service awsS3Service;
+    private final ProductorService productorService;
 
     @Value("${efs.ruta}")
     private String rutaEfs;
@@ -25,9 +26,13 @@ public class GuiaService {
     @Value("${aws.s3.bucket}")
     private String bucket;
 
-    public GuiaService(GuiaRepository repository, AwsS3Service awsS3Service) {
+    public GuiaService(
+            GuiaRepository repository,
+            AwsS3Service awsS3Service,
+            ProductorService productorService) {
         this.repository = repository;
         this.awsS3Service = awsS3Service;
+        this.productorService = productorService;
     }
 
     private String generarNumeroGuia(Long id) {
@@ -111,7 +116,10 @@ public class GuiaService {
 
             guiaGuardada.setRutaS3(keyS3);
 
-            return repository.save(guiaGuardada);
+            GuiaDespacho guiaFinal = repository.save(guiaGuardada);
+            productorService.enviarGuia(guiaFinal);
+
+            return guiaFinal;
 
         } catch (Exception e) {
             throw new RuntimeException("Error al crear guia y subir a S3: " + e.getMessage());

@@ -43,6 +43,24 @@ jobs:
           username: ${{ secrets.USER_SERVER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
+            WALLET_DIR=/opt/oracle/wallet-guias
+
+            if ! command -v unzip >/dev/null 2>&1; then
+              if command -v apt-get >/dev/null 2>&1; then
+                sudo apt-get update
+                sudo apt-get install -y unzip
+              elif command -v yum >/dev/null 2>&1; then
+                sudo yum install -y unzip
+              fi
+            fi
+
+            sudo rm -rf "$WALLET_DIR"
+            sudo mkdir -p "$WALLET_DIR"
+            printf '%s' '${{ secrets.ORACLE_WALLET_BASE64 }}' | base64 -d > /tmp/oracle-wallet.zip
+            sudo unzip -o /tmp/oracle-wallet.zip -d "$WALLET_DIR"
+            rm -f /tmp/oracle-wallet.zip
+            sudo chmod -R 755 "$WALLET_DIR"
+
             docker pull ${{ secrets.DOCKERHUB_USERNAME }}/guias-app:latest
 
             docker stop guias-app || true
@@ -53,9 +71,13 @@ jobs:
               --restart unless-stopped \
               --network rabbitmq_default \
               -p 8080:8080 \
+              -v /opt/oracle/wallet-guias:/opt/oracle/wallet:ro \
               -e AWS_ACCESS_KEY_ID='${{ secrets.AWS_ACCESS_KEY_ID }}' \
               -e AWS_SECRET_ACCESS_KEY='${{ secrets.AWS_SECRET_ACCESS_KEY }}' \
               -e AWS_SESSION_TOKEN='${{ secrets.AWS_SESSION_TOKEN }}' \
               -e AWS_REGION='${{ secrets.AWS_REGION }}' \
               -e S3_BUCKET='${{ secrets.S3_BUCKET }}' \
+              -e ORACLE_DB_URL='jdbc:oracle:thin:@${{ secrets.ORACLE_DB_TNS_ALIAS }}?TNS_ADMIN=/opt/oracle/wallet' \
+              -e ORACLE_DB_USERNAME='${{ secrets.ORACLE_DB_USERNAME }}' \
+              -e ORACLE_DB_PASSWORD='${{ secrets.ORACLE_DB_PASSWORD }}' \
               ${{ secrets.DOCKERHUB_USERNAME }}/guias-app:latest
