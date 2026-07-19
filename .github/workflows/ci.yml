@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout del código
+      - name: Checkout del codigo
         uses: actions/checkout@v4
 
       - name: Configurar Java 21
@@ -19,8 +19,11 @@ jobs:
           java-version: '21'
           distribution: 'temurin'
 
-      - name: Compilar aplicación
+      - name: Compilar aplicacion principal
         run: mvn clean package -DskipTests
+
+      - name: Compilar BFF
+        run: mvn -f guias-bff/pom.xml clean package -DskipTests
 
       - name: Login Docker Hub
         uses: docker/login-action@v3
@@ -28,13 +31,17 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Construir imagen Docker
-        run: |
-          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/guias-app:latest .
+      - name: Construir imagen Docker aplicacion principal
+        run: docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/guias-app:latest .
 
-      - name: Publicar imagen en Docker Hub
-        run: |
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/guias-app:latest
+      - name: Construir imagen Docker BFF
+        run: docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/guias-bff:latest ./guias-bff
+
+      - name: Publicar imagen aplicacion principal en Docker Hub
+        run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/guias-app:latest
+
+      - name: Publicar imagen BFF en Docker Hub
+        run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/guias-bff:latest
 
       - name: Desplegar en EC2
         uses: appleboy/ssh-action@v1.0.3
@@ -44,6 +51,7 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             WALLET_DIR=/opt/oracle/wallet-guias
+            NETWORK_NAME=guias-network
 
             if ! command -v unzip >/dev/null 2>&1; then
               if command -v apt-get >/dev/null 2>&1; then
@@ -61,15 +69,34 @@ jobs:
             rm -f /tmp/oracle-wallet.zip
             sudo chmod -R 755 "$WALLET_DIR"
 
-            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/guias-app:latest
+            docker network create "$NETWORK_NAME" || true
 
+            docker pull rabbitmq:3-management
+            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/guias-app:latest
+            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/guias-bff:latest
+
+            docker stop guias-bff || true
+            docker rm guias-bff || true
             docker stop guias-app || true
             docker rm guias-app || true
+            docker stop rabbitmq-guias || true
+            docker rm rabbitmq-guias || true
+
+            docker run -d \
+              --name rabbitmq-guias \
+              --restart unless-stopped \
+              --network "$NETWORK_NAME" \
+              -p 5672:5672 \
+              -p 15672:15672 \
+              -e RABBITMQ_DEFAULT_USER=admin \
+              -e RABBITMQ_DEFAULT_PASS=admin123 \
+              -v rabbitmq_data:/var/lib/rabbitmq \
+              rabbitmq:3-management
 
             docker run -d \
               --name guias-app \
               --restart unless-stopped \
-              --network rabbitmq_default \
+              --network "$NETWORK_NAME" \
               -p 8080:8080 \
               -v /opt/oracle/wallet-guias:/opt/oracle/wallet:ro \
               -e AWS_ACCESS_KEY_ID='${{ secrets.AWS_ACCESS_KEY_ID }}' \
@@ -80,4 +107,13 @@ jobs:
               -e ORACLE_DB_URL='jdbc:oracle:thin:@${{ secrets.ORACLE_DB_TNS_ALIAS }}?TNS_ADMIN=/opt/oracle/wallet' \
               -e ORACLE_DB_USERNAME='${{ secrets.ORACLE_DB_USERNAME }}' \
               -e ORACLE_DB_PASSWORD='${{ secrets.ORACLE_DB_PASSWORD }}' \
+              -e SPRING_RABBITMQ_HOST=rabbitmq-guias \
               ${{ secrets.DOCKERHUB_USERNAME }}/guias-app:latest
+
+            docker run -d \
+              --name guias-bff \
+              --restart unless-stopped \
+              --network "$NETWORK_NAME" \
+              -p 8081:8081 \
+              -e SPRING_RABBITMQ_HOST=rabbitmq-guias \
+              ${{ secrets.DOCKERHUB_USERNAME }}/guias-bff:latest

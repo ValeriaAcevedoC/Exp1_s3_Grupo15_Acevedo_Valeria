@@ -12,5 +12,34 @@ services:
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
 
+  guias-service:
+    build:
+      context: .
+      dockerfile: dockerfile
+    container_name: guias-service
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      ORACLE_DB_URL: ${ORACLE_DB_URL}
+      ORACLE_DB_USERNAME: ${ORACLE_DB_USERNAME}
+      ORACLE_DB_PASSWORD: ${ORACLE_DB_PASSWORD}
+      SPRING_RABBITMQ_HOST: rabbitmq
+    depends_on:
+      - rabbitmq
+
+  guias-bff:
+    build:
+      context: ./guias-bff
+      dockerfile: Dockerfile
+    container_name: guias-bff
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    environment:
+      SPRING_RABBITMQ_HOST: rabbitmq
+    depends_on:
+      - rabbitmq
+
 volumes:
   rabbitmq_data:

@@ -30,8 +30,8 @@ public class SecurityConfig {
                     .hasRole("ADMIN")
 
                 // Rol ADMIN: puede crear guías
-                .requestMatchers(HttpMethod.POST, "/api/guias/**")
-                    .hasRole("ADMIN")
+                .requestMatchers(HttpMethod.POST, "/api/guias")
+                    .denyAll()
 
                 // Rol ADMIN: puede actualizar guías
                 .requestMatchers(HttpMethod.PUT, "/api/guias/**")
